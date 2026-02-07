@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chat Exporter</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>🔄 AI Chat Exporter</h1>
+    
+    <div class="section">
+      <h2>Export Conversation</h2>
+      <button id="exportBtn" class="btn btn-primary">
+        📥 Export Current Chat
+      </button>
+      <p class="status" id="exportStatus"></p>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section">
+      <h2>Import Conversation</h2>
+      <input type="file" id="fileInput" accept=".json" style="display: none;">
+      <button id="selectFileBtn" class="btn btn-secondary">
+        📂 Select JSON File
+      </button>
+      <p class="filename" id="selectedFile"></p>
+      
+      <div id="importSection" style="display: none;">
+        <p><strong>Import Method:</strong> Automatic Injection</p>
+        <label class="checkbox-label">
+          <input type="checkbox" id="useCondensed" checked>
+          Use condensed context (short prompt, maximizes context window)
+        </label>
+        <small>The conversation will be pasted into the chat input. Review and send!</small>
+        
+        <button id="importBtn" class="btn btn-primary">
+          ⚡ Auto-Import Conversation
+        </button>
+      </div>
+      
+      <p class="status" id="importStatus"></p>
+    </div>
+
+    <div class="footer">
+      <small>Export from Claude, ChatGPT, or Gemini. Auto-import anywhere!</small>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

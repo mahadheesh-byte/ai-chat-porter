@@ -1,0 +1,51 @@
+# ⚠️ INSTALLATION INSTRUCTIONS ⚠️
+
+## YOU NEED TO SELECT THIS FOLDER!
+
+This folder (AI-Chat-Exporter) contains:
+- ✅ manifest.json
+- ✅ popup.html
+- ✅ popup.js
+- ✅ Other required files
+
+## How to Install:
+
+### Windows:
+1. Extract this ZIP file completely
+2. Go to Chrome: `chrome://extensions/`
+3. Turn ON "Developer mode" (top right)
+4. Click "Load unpacked"
+5. **Navigate to and SELECT THIS FOLDER** (AI-Chat-Exporter)
+   - The one with manifest.json inside
+6. Click "Select Folder"
+
+### Mac:
+1. Extract this ZIP file completely
+2. Go to Chrome: `chrome://extensions/`
+3. Turn ON "Developer mode" (top right)
+4. Click "Load unpacked"
+5. **Navigate to and SELECT THIS FOLDER** (AI-Chat-Exporter)
+   - The one with manifest.json inside
+6. Click "Select"
+
+## ✅ Success!
+You should see "AI Chat Exporter" appear in your extensions list!
+
+## ❌ Error: "Manifest file is missing"?
+- Make sure you selected THIS folder (the one with manifest.json)
+- Don't select the ZIP file - extract it first!
+- Don't select a parent folder - select THIS folder!
+
+## 🎯 Quick Check
+Look in this folder - do you see these files?
+- manifest.json ✓
+- popup.html ✓
+- popup.js ✓
+- icons/ folder ✓
+- content-scripts/ folder ✓
+
+If yes, you're in the right place!
+
+---
+
+For more help, read INSTALL.md or QUICKSTART.md in this folder.

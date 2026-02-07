@@ -1,0 +1,40 @@
+graph TB
+    subgraph "Browser Extension"
+        A[Popup UI] --> B[Content Scripts]
+        A --> C[Storage API]
+    end
+    
+    subgraph "Export Flow"
+        D[Claude.ai] --> E[Claude Content Script]
+        F[ChatGPT.com] --> G[ChatGPT Content Script]
+        H[Gemini] --> I[Gemini Content Script]
+        E --> J[Extract Messages]
+        G --> J
+        I --> J
+        J --> K[Universal JSON Format]
+        K --> L[Download File]
+    end
+    
+    subgraph "Import Flow"
+        M[Load JSON File] --> N[Parse Messages]
+        N --> O[Select Target Platform]
+        O --> P{Which API?}
+        P -->|Claude| Q[Anthropic API]
+        P -->|ChatGPT| R[OpenAI API]
+        P -->|Gemini| S[Google AI API]
+        Q --> T[Send Message Array]
+        R --> T
+        S --> T
+        T --> U[Conversation Loaded!]
+    end
+    
+    subgraph "Security"
+        V[User API Keys] --> C
+        C --> W[Local Browser Storage]
+        V -.->|Never shared| X[Only sent to official APIs]
+    end
+    
+    style A fill:#4CAF50,color:#fff
+    style K fill:#2196F3,color:#fff
+    style T fill:#FF9800,color:#fff
+    style W fill:#9C27B0,color:#fff
