@@ -1,10 +1,14 @@
 # 🔄 AI Chat Exporter
 
+<<<<<<< HEAD
 The easiest way to move, backup, and manage your AI conversations. Export and import between Claude, ChatGPT, and Gemini—supports bulk exports, cross-platform imports, and simple clipboard transfer.
+=======
+Export and import conversations across **Claude, ChatGPT, Gemini, Grok, Perplexity, Copilot, Poe, Meta AI, and You.com**.
+>>>>>>> f671ed0 (Update extension files with latest changes)
 
 ## Features
 
-- ✅ **Export** conversations from Claude, ChatGPT, and Gemini to JSON
+- ✅ **Export** conversations from all supported AI chats to JSON
 - ✅ **Import** conversations by copying formatted context to clipboard
 - ✅ **Universal JSON format** for easy data portability
 - ✅ **Simple** - No API keys needed, just copy and paste!
@@ -50,7 +54,7 @@ The extension uses content scripts to scrape the visible conversation from each 
 - Timestamps
 - Platform metadata
 
-Everything is saved in a universal JSON format:
+Everything is saved in a universal JSON format. Messages may include optional `attachments` (images and file links):
 
 ```json
 {
@@ -66,10 +70,16 @@ Everything is saved in a universal JSON format:
       "role": "assistant",
       "content": "Hi! How can I help you?",
       "timestamp": "2026-02-05T10:30:05.000Z"
+    },
+    {
+      "role": "user",
+      "content": "What's in this image?",
+      "attachments": [{ "type": "image", "url": "https://..." }],
+      "timestamp": "2026-02-05T10:31:00.000Z"
     }
   ],
   "metadata": {
-    "total_messages": 2,
+    "total_messages": 3,
     "url": "https://claude.ai/chat/..."
   }
 }
@@ -96,10 +106,15 @@ The AI will read the entire conversation history and continue from where you lef
 
 | Platform | Export | Import |
 |----------|--------|--------|
-| Claude | ✅ | ✅ (paste) |
-| ChatGPT | ✅ | ✅ (paste) |
-| Gemini | ✅ | ✅ (paste) |
-| Any AI Chat | ❌ | ✅ (paste) |
+| Claude | ✅ | ✅ |
+| ChatGPT | ✅ | ✅ |
+| Gemini | ✅ | ✅ |
+| Grok | ✅ | ✅ |
+| Perplexity | ✅ | ✅ |
+| Microsoft Copilot (Bing) | ✅ | ✅ |
+| Poe | ✅ | ✅ |
+| Meta AI | ✅ | ✅ |
+| You.com | ✅ | ✅ |
 
 ## Troubleshooting
 
@@ -142,14 +157,13 @@ chat-exporter-extension/
 
 ## Known Limitations
 
-- Only exports visible conversation content (no file attachments yet)
-- Platform-specific features (Claude artifacts, ChatGPT images) may not transfer
-- Import requires manually pasting the context into the chat
-- Very long conversations may hit context limits of the target AI
+- Exports visible conversation text plus **image and file references** (URLs/links). Inline images are noted as `[inline image]`; re-uploading files into the target chat is not done automatically—import pastes attachment references so the AI knows they existed.
+- Platform-specific features (e.g. Claude artifacts) may not transfer fully.
+- Very long conversations may hit context limits of the target AI.
 
 ## Future Improvements
 
-- [ ] Support for exporting/importing file attachments
+- [ ] Optional re-upload of images/files on import (where the target platform allows)
 - [ ] Batch export for multiple conversations
 - [ ] Support for more platforms (Perplexity, etc.)
 - [ ] Better formatting options

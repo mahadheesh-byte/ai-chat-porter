@@ -31,7 +31,7 @@ async function exportChat() {
     // Determine platform
     const platform = getPlatformFromURL(tab.url);
     if (!platform) {
-      throw new Error('Not on a supported platform. Please open Claude, ChatGPT, Gemini, or Grok.');
+      throw new Error('Not on a supported AI chat. Open Claude, ChatGPT, Gemini, Grok, Perplexity, Copilot, Poe, Meta AI, or You.com.');
     }
     
     // Send message to content script with error handling
@@ -139,18 +139,21 @@ async function importChat() {
     const currentPlatform = getPlatformFromURL(tab.url);
     
     if (!currentPlatform) {
-      throw new Error('Please open Claude, ChatGPT, Gemini, or Grok to import.');
+      throw new Error('Open a supported AI chat (e.g. Claude, ChatGPT, Gemini, Grok, Perplexity, Copilot, Poe, Meta AI, You.com) to import.');
     }
     
     const useCondensed = document.getElementById('useCondensed').checked;
+    const condensedPrompt = useCondensed ? condenseConversation(selectedFileData.messages) : null;
+    const textToPaste = condensedPrompt != null ? condensedPrompt : buildFullContextText(selectedFileData.messages);
+    try {
+      await navigator.clipboard.writeText(textToPaste);
+    } catch (_) {}
     const payload = {
       action: 'importChat',
       messages: selectedFileData.messages,
       platform: currentPlatform
     };
-    if (useCondensed) {
-      payload.condensedPrompt = condenseConversation(selectedFileData.messages);
-    }
+    if (useCondensed) payload.condensedPrompt = condensedPrompt;
 
     let response;
     try {
@@ -167,8 +170,8 @@ async function importChat() {
     if (response && response.error) throw new Error(response.error);
 
     statusEl.textContent = useCondensed
-      ? `✓ Condensed context pasted (${selectedFileData.messages.length} messages). Review and send!`
-      : `✓ Importing ${selectedFileData.messages.length} messages... This will take a moment.`;
+      ? `✓ Done! Text is on your clipboard. Click inside the chat box, then press Ctrl+V (Cmd+V on Mac) if it didn't paste automatically.`
+      : `✓ Done! Text is on your clipboard. Click inside the chat box, then press Ctrl+V (Cmd+V on Mac) if it didn't paste automatically.`;
     statusEl.className = 'status success';
 
   } catch (error) {
@@ -177,11 +180,26 @@ async function importChat() {
   }
 }
 
+function buildFullContextText(messages) {
+  let out = "Here's my previous conversation that I want to continue:\n\n---\n\n";
+  (messages || []).forEach((msg) => {
+    const speaker = msg.role === 'user' ? 'Me' : 'Assistant';
+    const attRef = (msg.attachments && msg.attachments.length) ? '\n[Attachments: ' + msg.attachments.map(a => a.url || a.name || '').filter(Boolean).join(', ') + ']' : '';
+    out += `${speaker}: ${msg.content}${attRef}\n\n`;
+  });
+  return out + "---\n\nPlease continue from where we left off.";
+}
+
 // Condense conversation into a short prompt (same logic as context/context.py)
 function truncateText(text, maxLen, suffix = '...') {
   const t = (text || '').trim();
   if (t.length <= maxLen) return t;
   return t.slice(0, maxLen - suffix.length).trimEnd() + suffix;
+}
+
+function attachmentRefs(msg) {
+  if (!msg || !msg.attachments || msg.attachments.length === 0) return '';
+  return ' [Attachments: ' + msg.attachments.map(a => a.url || a.name || '').filter(Boolean).join(', ') + ']';
 }
 
 function condenseConversation(messages, maxChars = 4000) {
@@ -192,6 +210,7 @@ function condenseConversation(messages, maxChars = 4000) {
   const firstContent = (firstUser && firstUser.content || '').trim();
   const lastUserContent = (lastUser && lastUser.content || '').trim();
   const lastAssistantContent = (lastAssistant && lastAssistant.content || '').trim();
+  const hasAttachments = messages.some(m => m.attachments && m.attachments.length > 0);
 
   const middle = [];
   const n = messages.length;
@@ -204,14 +223,19 @@ function condenseConversation(messages, maxChars = 4000) {
 
   let parts = ['Context from a previous conversation (continue from here):\n'];
   if (firstContent) parts.push('Topic / goal: ' + truncateText(firstContent, 300) + '\n');
+  if (hasAttachments) parts.push('(Conversation included images or file attachments.)\n');
   if (middle.length > 0) {
     parts.push('Key points from the middle of the conversation:');
     middle.slice(0, 5).forEach(b => parts.push('  • ' + b));
     parts.push('');
   }
   parts.push('Last exchange:');
-  if (lastUserContent) parts.push('  Me: ' + truncateText(lastUserContent, 800));
-  if (lastAssistantContent) parts.push('  Assistant: ' + truncateText(lastAssistantContent, 800));
+  if (lastUserContent || (lastUser && lastUser.attachments && lastUser.attachments.length)) {
+    parts.push('  Me: ' + truncateText(lastUserContent, 800) + attachmentRefs(lastUser));
+  }
+  if (lastAssistantContent || (lastAssistant && lastAssistant.attachments && lastAssistant.attachments.length)) {
+    parts.push('  Assistant: ' + truncateText(lastAssistantContent, 800) + attachmentRefs(lastAssistant));
+  }
   parts.push('');
   parts.push('---\nPlease continue from where we left off.');
 
@@ -221,9 +245,10 @@ function condenseConversation(messages, maxChars = 4000) {
   parts = [
     'Context from a previous conversation (continue from here):\n',
     firstContent ? 'Topic / goal: ' + truncateText(firstContent, 250) + '\n' : '',
+    hasAttachments ? '(Conversation included images or file attachments.)\n' : '',
     'Last exchange:',
-    lastUserContent ? '  Me: ' + truncateText(lastUserContent, 500) : '',
-    lastAssistantContent ? '  Assistant: ' + truncateText(lastAssistantContent, 500) : '',
+    lastUserContent || lastUser ? '  Me: ' + truncateText(lastUserContent, 500) + attachmentRefs(lastUser) : '',
+    lastAssistantContent || lastAssistant ? '  Assistant: ' + truncateText(lastAssistantContent, 500) + attachmentRefs(lastAssistant) : '',
     '\n---\nPlease continue from where we left off.'
   ];
   result = parts.filter(Boolean).join('\n');
@@ -233,10 +258,17 @@ function condenseConversation(messages, maxChars = 4000) {
 
 // Helper functions
 function getPlatformFromURL(url) {
+  if (!url) return null;
   if (url.includes('claude.ai')) return 'claude';
   if (url.includes('chatgpt.com')) return 'chatgpt';
   if (url.includes('gemini.google.com')) return 'gemini';
-  if (url && url.includes('grok.com')) return 'grok';
+  if (url.includes('grok.com')) return 'grok';
+  if (url.includes('perplexity.ai')) return 'perplexity';
+  if (url.includes('copilot.microsoft.com')) return 'copilot';
+  if (url.includes('bing.com')) return 'copilot';
+  if (url.includes('poe.com')) return 'poe';
+  if (url.includes('meta.ai')) return 'meta';
+  if (url.includes('you.com')) return 'you';
   return null;
 }
 
@@ -245,7 +277,12 @@ function getPlatformName(platform) {
     claude: 'Claude',
     chatgpt: 'ChatGPT',
     gemini: 'Gemini',
-    grok: 'Grok'
+    grok: 'Grok',
+    perplexity: 'Perplexity',
+    copilot: 'Copilot',
+    poe: 'Poe',
+    meta: 'Meta AI',
+    you: 'You.com'
   };
   return names[platform] || platform;
 }

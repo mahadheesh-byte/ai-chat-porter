@@ -19,67 +19,72 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return true;
 });
 
+function extractAttachmentsFromContainer(container) {
+  const attachments = [];
+  if (!container) return attachments;
+  container.querySelectorAll('img[src]').forEach((img) => {
+    const src = (img.getAttribute('src') || '').trim();
+    if (!src) return;
+    attachments.push({ type: 'image', url: src.startsWith('data:') ? '[inline image]' : src });
+  });
+  container.querySelectorAll('a[href*="blob"], a[href*="download"], a[download]').forEach((a) => {
+    const href = (a.getAttribute('href') || '').trim();
+    if (href) attachments.push({ type: 'file', url: href, name: (a.getAttribute('download') || a.textContent || 'file').trim().slice(0, 80) });
+  });
+  return attachments;
+}
+
 function extractGeminiMessages() {
   const messages = [];
-  
-  // Gemini uses message-content class
   const messageContainers = document.querySelectorAll('.message-content, [class*="message"]');
-  
+
   if (messageContainers.length === 0) {
     throw new Error('No messages found. Make sure you have an active conversation.');
   }
-  
+
   messageContainers.forEach((container) => {
-    // Try to determine if it's a user or model message
     const parent = container.closest('[class*="user"]') || container.closest('[data-test-id*="user"]');
-    const isUserMessage = parent !== null || 
-                         container.classList.contains('user-message') ||
-                         container.querySelector('[class*="user"]') !== null;
-    
+    const isUserMessage = parent !== null ||
+      container.classList.contains('user-message') ||
+      container.querySelector('[class*="user"]') !== null;
     const role = isUserMessage ? 'user' : 'assistant';
-    
-    // Extract text content
     const content = container.textContent.trim();
-    
-    if (content && content.length > 0) {
+    const attachments = extractAttachmentsFromContainer(container);
+    if (content || attachments.length > 0) {
       messages.push({
         role,
-        content,
-        timestamp: new Date().toISOString()
+        content: content || '(attachment)',
+        timestamp: new Date().toISOString(),
+        ...(attachments.length ? { attachments } : {})
       });
     }
   });
-  
-  // Alternative approach if no messages found
+
   if (messages.length === 0) {
-    // Try to find all text within the conversation area
-    const conversationArea = document.querySelector('main') || 
-                            document.querySelector('[role="main"]') ||
-                            document.querySelector('.conversation');
-    
+    const conversationArea = document.querySelector('main') ||
+      document.querySelector('[role="main"]') ||
+      document.querySelector('.conversation');
     if (conversationArea) {
-      // Look for alternating message patterns
       const allDivs = conversationArea.querySelectorAll('div[class*="message"], div[class*="response"]');
-      
       allDivs.forEach((div, index) => {
         const content = div.textContent.trim();
-        if (content && content.length > 10) { // Filter out very short content
-          // Alternate between user and assistant
+        if (content && content.length > 10) {
           const role = index % 2 === 0 ? 'user' : 'assistant';
+          const attachments = extractAttachmentsFromContainer(div);
           messages.push({
             role,
-            content,
-            timestamp: new Date().toISOString()
+            content: content || '(attachment)',
+            timestamp: new Date().toISOString(),
+            ...(attachments.length ? { attachments } : {})
           });
         }
       });
     }
   }
-  
+
   if (messages.length === 0) {
     throw new Error('No messages found. Gemini interface may have changed.');
   }
-  
   return messages;
 }
 
@@ -147,15 +152,26 @@ async function injectConversation(messages, condensedPrompt) {
   inputBox.dispatchEvent(new InputEvent('input', { bubbles: true, data: contextText, inputType: 'insertText' }));
   inputBox.dispatchEvent(new Event('input', { bubbles: true }));
   inputBox.dispatchEvent(new Event('change', { bubbles: true }));
-
+  simulateCtrlV(inputBox);
   showImportSuccess(messages ? messages.length : 1, true);
+}
+
+function simulateCtrlV(target) {
+  const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+  const opts = { key: 'v', code: 'KeyV', keyCode: 86, bubbles: true, cancelable: true };
+  target.dispatchEvent(new KeyboardEvent('keydown', { ...opts, ctrlKey: !isMac, metaKey: isMac }));
+  target.dispatchEvent(new KeyboardEvent('keypress', { ...opts, ctrlKey: !isMac, metaKey: isMac }));
+  target.dispatchEvent(new KeyboardEvent('keyup', { ...opts, ctrlKey: !isMac, metaKey: isMac }));
 }
 
 function buildFullContextText(messages) {
   let text = "Here's my previous conversation that I want to continue:\n\n---\n\n";
   (messages || []).forEach((msg) => {
     const speaker = msg.role === 'user' ? 'Me' : 'Assistant';
-    text += `${speaker}: ${msg.content}\n\n`;
+    const attRef = (msg.attachments && msg.attachments.length)
+      ? '\n[Attachments: ' + msg.attachments.map(a => a.url || a.name || '').filter(Boolean).join(', ') + ']'
+      : '';
+    text += `${speaker}: ${msg.content}${attRef}\n\n`;
   });
   text += "---\n\nPlease continue from where we left off.";
   return text;
